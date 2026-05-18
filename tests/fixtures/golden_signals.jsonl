@@ -1,0 +1,20 @@
+{"id":"sig1","text":"#XAUUSD SELL 4664\nSL 4678\nTP 4661\nTP 4658\nTP 4655\nTP 4641","direction":"SELL","instrument":"XAUUSD","entry":4664.0,"stop_loss":4678.0,"take_profits":[4661.0,4658.0,4655.0,4641.0],"quality_flag":"COMPLETE"}
+{"id":"sig2","text":"#XAUUSD BUY 4829\nSL 4815\nTP 4832\nTP 4836\nTP 4840\nTP 4844","direction":"BUY","instrument":"XAUUSD","entry":4829.0,"stop_loss":4815.0,"take_profits":[4832.0,4836.0,4840.0,4844.0],"quality_flag":"COMPLETE"}
+{"id":"sig3","text":"XAUUSD Sell 4675/4678\n\nTP1. @ 4672\nTP2. @ 4669\nTP3. @ 4664\n\nSL.    @ 4686","direction":"SELL","instrument":"XAUUSD","entry":null,"entry_low":4675.0,"entry_high":4678.0,"stop_loss":4686.0,"take_profits":[4672.0,4669.0,4664.0],"quality_flag":"COMPLETE"}
+{"id":"sig4","text":"GOLD BUY NOW 4710\nSL 4700\nTP 4720\nTP 4730","direction":"BUY","instrument":"XAUUSD","entry":4710.0,"stop_loss":4700.0,"take_profits":[4720.0,4730.0],"quality_flag":"COMPLETE"}
+{"id":"sig5","text":"SELL XAUUSD @ 4690\nSL: 4700\nTP1: 4685\nTP2: 4680","direction":"SELL","instrument":"XAUUSD","entry":4690.0,"stop_loss":4700.0,"take_profits":[4685.0,4680.0],"quality_flag":"COMPLETE"}
+{"id":"sig6","text":"BUY GOLD @ 4710 SL 4700 TP1 4720 TP2 4730 TP3 4740","direction":"BUY","instrument":"XAUUSD","entry":4710.0,"stop_loss":4700.0,"take_profits":[4720.0,4730.0,4740.0],"quality_flag":"COMPLETE"}
+{"id":"sig7","text":"#XAUUSD\nBuy now\nEntry: 4715\nSL: 4705\nTP1: 4725\nTP2: 4735","direction":"BUY","instrument":"XAUUSD","entry":4715.0,"stop_loss":4705.0,"take_profits":[4725.0,4735.0],"quality_flag":"COMPLETE"}
+{"id":"sig8","text":"GOLD SELL 4800 SL 4815 TP 4790 TP 4780 TP 4770","direction":"SELL","instrument":"XAUUSD","entry":4800.0,"stop_loss":4815.0,"take_profits":[4790.0,4780.0,4770.0],"quality_flag":"COMPLETE"}
+{"id":"sig9","text":"#XAUUSD SELL 4951\nSL 4965\nTP 4948\nTP 4945","direction":"SELL","instrument":"XAUUSD","entry":4951.0,"stop_loss":4965.0,"take_profits":[4948.0,4945.0],"quality_flag":"COMPLETE"}
+{"id":"sig10","text":"XAUUSD BUY @ 4700\nStop Loss 4680\nTake Profit 1 4720\nTake Profit 2 4740","direction":"BUY","instrument":"XAUUSD","entry":4700.0,"stop_loss":4680.0,"take_profits":[4720.0,4740.0],"quality_flag":"COMPLETE"}
+{"id":"sig11_missing_sl","text":"#XAUUSD BUY 4710\nTP 4720\nTP 4730","direction":"BUY","instrument":"XAUUSD","entry":4710.0,"stop_loss":null,"take_profits":[4720.0,4730.0],"quality_flag":"MISSING_SL"}
+{"id":"sig12_missing_tp","text":"#XAUUSD SELL 4700\nSL 4710","direction":"SELL","instrument":"XAUUSD","entry":4700.0,"stop_loss":4710.0,"take_profits":[],"quality_flag":"MISSING_TP"}
+{"id":"sig13_emoji_decorated","text":"⭐️GOLD BUY 4692/ 4688\n\n🥇TP1 4696\n🥈TP2 4700\n🥉TP3 4705\n\n❌SL 4668","direction":"BUY","instrument":"XAUUSD","entry":null,"entry_low":4688.0,"entry_high":4692.0,"stop_loss":4668.0,"take_profits":[4696.0,4700.0,4705.0],"quality_flag":"COMPLETE"}
+{"id":"sig14_underscore_range","text":"GOLD Sell NOW 4705_4708\n\nTP1 4702\nTP2 4699\nTP3 4695\n\nSL 4715","direction":"SELL","instrument":"XAUUSD","entry":null,"entry_low":4705.0,"entry_high":4708.0,"stop_loss":4715.0,"take_profits":[4702.0,4699.0,4695.0],"quality_flag":"COMPLETE"}
+{"id":"sig15_buy_from","text":"GOLD BUY FROM 4925\n\nTP 4938\nTP 4947\nTP 4955\n\nSL 4919","direction":"BUY","instrument":"XAUUSD","entry":4925.0,"stop_loss":4919.0,"take_profits":[4938.0,4947.0,4955.0],"quality_flag":"COMPLETE"}
+{"id":"reject1","text":"TP1 hit +30 pips","direction":null}
+{"id":"reject2","text":"VIP signals contact me on whatsapp","direction":null}
+{"id":"reject3","text":"SELL 2","direction":null,"note":"implausible XAUUSD entry"}
+{"id":"reject4","text":"All TARGET COMPLETE 290+ PIPS DONE","direction":null,"note":"post-trade summary, not a signal"}
+{"id":"reject5","text":"Use proper money management","direction":null}

@@ -242,6 +242,45 @@ def classify_run(
 
 
 app.add_typer(classify_app, name="classify")
+
+
+@parse_app.command("signals")
+def parse_signals(
+    use_llm: bool = typer.Option(True, "--use-llm/--no-llm"),
+    group_id: str | None = typer.Option(None, "--group"),
+) -> None:
+    """Extract Signal rows from every SIGNAL-classified message."""
+    from signalyze.llm import get_llm_client
+    from signalyze.parse.signals_runner import extract_signals
+
+    settings = get_settings()
+    logger = get_logger("signalyze.cli.parse")
+    db_path = settings.resolve(settings.paths.db_path)
+    llm = get_llm_client() if use_llm else None
+
+    with open_database(db_path) as db:
+        stats = extract_signals(
+            db=db,
+            llm_client=llm,
+            use_llm=use_llm,
+            group_id=group_id,
+            settings=settings,
+        )
+
+    logger.info(
+        "Parsed signals: candidates=%d parsed=%d (rules=%d llm=%d) rejected=%d",
+        stats.candidates,
+        stats.parsed,
+        stats.rules_parsed,
+        stats.llm_parsed,
+        stats.rejected,
+    )
+    typer.echo(
+        f"parse signals: candidates={stats.candidates} parsed={stats.parsed} "
+        f"rules={stats.rules_parsed} llm={stats.llm_parsed} rejected={stats.rejected}"
+    )
+
+
 app.add_typer(parse_app, name="parse")
 app.add_typer(link_app, name="link")
 app.add_typer(evaluate_app, name="evaluate")
