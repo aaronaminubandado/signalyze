@@ -644,6 +644,48 @@ def compare_metrics(
 
 
 app.add_typer(compare_app, name="compare")
+
+
+@report_app.command("html")
+def report_html(
+    output: Path = typer.Option(
+        Path("data/reports/signalyze.html"), "--output", "-o"
+    ),
+    title: str = typer.Option("Signalyze report", "--title"),
+    start_utc: str | None = typer.Option(None, "--start"),
+    end_utc: str | None = typer.Option(None, "--end"),
+) -> None:
+    """Render a static, share-friendly HTML report."""
+    from signalyze.report import render_html_report
+
+    settings = get_settings()
+    db_path = settings.resolve(settings.paths.db_path)
+    output_path = settings.resolve(output)
+    with open_database(db_path) as db:
+        rendered = render_html_report(
+            db=db,
+            output_path=output_path,
+            title=title,
+            start_utc=start_utc,
+            end_utc=end_utc,
+        )
+    typer.echo(f"report html: wrote {rendered}")
+
+
+@report_app.command("dashboard")
+def report_dashboard() -> None:
+    """Print the command to launch the Streamlit dashboard.
+
+    We don't auto-launch from here so the CLI stays a single-process tool.
+    """
+    typer.echo(
+        "Run the dashboard with:\n"
+        "    streamlit run -m signalyze.report.dashboard\n"
+        "Install optional dependencies first if needed:\n"
+        "    pip install '.[report]'\n"
+    )
+
+
 app.add_typer(report_app, name="report")
 
 
