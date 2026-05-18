@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+from pathlib import Path
+
 import typer
 
 from signalyze import __version__
 from signalyze.config import get_settings
 from signalyze.storage import open_database
-from signalyze.utils.logging import setup_logger
+from signalyze.utils.logging import get_logger, setup_logger
+from signalyze.utils.time import parse_utc
 
 app = typer.Typer(
     add_completion=False,
@@ -49,6 +53,111 @@ evaluate_app = typer.Typer(help="Stages 6 & 8: compute reported and actual outco
 market_app = typer.Typer(help="Stage 7: fetch market bars from configured provider.")
 compare_app = typer.Typer(help="Stage 9: compare reported vs actual outcomes and analytics.")
 report_app = typer.Typer(help="Stage 10: reports + dashboard.")
+
+@ingest_app.command("backfill")
+def ingest_backfill(
+    raw_dir: Path | None = typer.Option(
+        None,
+        "--raw-dir",
+        help="Directory of legacy `<group_id>.csv` files. Defaults to settings.paths.raw_dir.",
+    ),
+    parquet_dir: Path | None = typer.Option(
+        None,
+        "--parquet-dir",
+        help="If set, write per-group parquet snapshots here.",
+    ),
+) -> None:
+    """Backfill the `messages` table from existing legacy CSV snapshots."""
+    from signalyze.ingest import backfill_from_csv_dir
+
+    settings = get_settings()
+    logger = get_logger("signalyze.cli.ingest")
+    raw_path = settings.resolve(raw_dir) if raw_dir else settings.resolve(settings.paths.raw_dir)
+    parquet_path = settings.resolve(parquet_dir) if parquet_dir else None
+
+    db_path = settings.resolve(settings.paths.db_path)
+    with open_database(db_path) as db:
+        results = backfill_from_csv_dir(db=db, raw_dir=raw_path, parquet_dir=parquet_path)
+
+    total_read = sum(r.rows_read for r in results)
+    total_inserted = sum(r.rows_inserted for r in results)
+    logger.info(
+        "Backfill done: files=%d read=%d inserted=%d",
+        len(results),
+        total_read,
+        total_inserted,
+    )
+    typer.echo(f"backfill: files={len(results)} read={total_read} inserted={total_inserted}")
+
+
+@ingest_app.command("fetch")
+def ingest_fetch(
+    groups_file: Path | None = typer.Option(
+        None, "--groups", help="Groups list file. Defaults to config/groups.txt."
+    ),
+    since: str | None = typer.Option(
+        None, "--since", help="UTC ISO start, e.g. 2026-01-17T00:00:00Z."
+    ),
+    until: str | None = typer.Option(
+        None, "--until", help="UTC ISO end, e.g. 2026-04-17T00:00:00Z."
+    ),
+    parquet_dir: Path | None = typer.Option(
+        None, "--parquet-dir", help="If set, also write per-group parquet snapshots."
+    ),
+) -> None:
+    """Fetch fresh Telegram messages into the `messages` table via Telethon."""
+    from telethon.sync import TelegramClient
+
+    from signalyze.ingest import fetch_messages_for_groups, parse_groups_file
+
+    settings = get_settings()
+    logger = get_logger("signalyze.cli.ingest")
+
+    if not settings.env.api_id or not settings.env.api_hash:
+        raise typer.BadParameter("API_ID and API_HASH must be set in .env to use `ingest fetch`.")
+
+    groups_path = settings.resolve(groups_file) if groups_file else settings.resolve(
+        settings.paths.groups_file
+    )
+    targets = parse_groups_file(groups_path)
+    if not targets:
+        raise typer.BadParameter(f"No groups parsed from {groups_path}")
+
+    date_from = parse_utc(since) if since else parse_utc(settings.ingest.date_from_utc)
+    date_to = parse_utc(until) if until else parse_utc(settings.ingest.date_to_utc)
+    parquet_path = settings.resolve(parquet_dir) if parquet_dir else None
+
+    session_name = str(settings.resolve(Path(settings.ingest.session_name)))
+
+    logger.info(
+        "Fetching %d groups from %s to %s", len(targets), date_from.isoformat(), date_to.isoformat()
+    )
+    db_path = settings.resolve(settings.paths.db_path)
+    with (
+        open_database(db_path) as db,
+        TelegramClient(session_name, int(settings.env.api_id), settings.env.api_hash) as client,
+    ):
+        stats = fetch_messages_for_groups(
+            client=client,
+            db=db,
+            group_targets=targets,
+            date_from=_as_naive_utc(date_from),
+            date_to=_as_naive_utc(date_to),
+            parquet_dir=parquet_path,
+        )
+
+    resolved = sum(1 for s in stats if s.status == "ok")
+    skipped = len(stats) - resolved
+    total_inserted = sum(s.inserted_messages for s in stats)
+    typer.echo(
+        f"fetch: resolved={resolved} skipped={skipped} inserted={total_inserted}"
+    )
+
+
+def _as_naive_utc(value: datetime) -> datetime:
+    """Telethon accepts tz-aware datetimes; pass through after ensuring UTC."""
+    return value
+
 
 app.add_typer(ingest_app, name="ingest")
 app.add_typer(classify_app, name="classify")
