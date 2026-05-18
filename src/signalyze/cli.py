@@ -444,6 +444,67 @@ def evaluate_leaderboard(
 
 
 app.add_typer(evaluate_app, name="evaluate")
+
+
+@market_app.command("fetch")
+def market_fetch(
+    instrument: str = typer.Option("XAUUSD", "--instrument"),
+    interval: str = typer.Option("1min", "--interval"),
+    provider: str = typer.Option("auto", "--provider", help="twelvedata | csv | auto"),
+    csv_path: Path | None = typer.Option(None, "--csv-path"),
+) -> None:
+    """Fetch the market bars required to evaluate every signal in the DB."""
+    from signalyze.market import MarketDataProvider, fetch_required_bars
+    from signalyze.market.providers import CSVProvider, TwelveDataProvider
+
+    settings = get_settings()
+    logger = get_logger("signalyze.cli.market")
+    db_path = settings.resolve(settings.paths.db_path)
+
+    chosen = provider
+    if chosen == "auto":
+        chosen = "csv" if csv_path is not None else settings.env.market_provider or "twelvedata"
+
+    market_provider: MarketDataProvider
+    if chosen == "csv":
+        if csv_path is None:
+            raise typer.BadParameter("--csv-path is required with --provider=csv")
+        market_provider = CSVProvider(settings.resolve(csv_path))
+    elif chosen == "twelvedata":
+        api_key = settings.env.twelvedata_api_key or ""
+        if not api_key:
+            raise typer.BadParameter("TWELVEDATA_API_KEY not set in environment")
+        market_provider = TwelveDataProvider(api_key=api_key)
+    else:
+        raise typer.BadParameter(f"unknown provider: {chosen}")
+
+    with open_database(db_path) as db:
+        stats = fetch_required_bars(
+            db=db,
+            provider=market_provider,
+            instrument=instrument,
+            interval=interval,
+            settings=settings,
+        )
+
+    logger.info(
+        "market fetch: provider=%s instrument=%s interval=%s cached=%d fetched=%d segments=%d errors=%d",
+        chosen,
+        instrument,
+        interval,
+        stats.cached_bars,
+        stats.fetched_bars,
+        stats.requested_segments,
+        len(stats.errors),
+    )
+    typer.echo(
+        f"market fetch: provider={chosen} cached={stats.cached_bars} fetched={stats.fetched_bars} "
+        f"segments={stats.requested_segments} errors={len(stats.errors)}"
+    )
+    for err in stats.errors[:5]:
+        typer.echo(f"  ! {err}")
+
+
 app.add_typer(market_app, name="market")
 app.add_typer(compare_app, name="compare")
 app.add_typer(report_app, name="report")
