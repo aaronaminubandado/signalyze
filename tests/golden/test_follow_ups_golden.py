@@ -57,6 +57,6 @@ def test_follow_ups_golden_exact_match_threshold() -> None:
             failures.append(f"{r['id']}: {why}")
 
     score = matches / len(records)
-    assert score >= 0.90, (
-        f"Follow-up exact match {score:.2f} < 0.90. Failures:\n" + "\n".join(failures)
+    assert score >= 0.95, (
+        f"Follow-up exact match {score:.2f} < 0.95. Failures:\n" + "\n".join(failures)
     )

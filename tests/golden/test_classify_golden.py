@@ -1,7 +1,7 @@
 """Golden-set evaluation of the rule-based classifier.
 
-The plan's Phase 2 verifiable output is `>= 0.90` precision on the SIGNAL class
-against the golden fixtures (later hardened to 0.95).
+The plan's Phase 2 verifiable output is `>= 0.95` precision on the SIGNAL class
+against the golden fixtures.
 """
 
 from __future__ import annotations
@@ -51,7 +51,7 @@ def test_signal_precision_meets_threshold() -> None:
     tp = confusion[("SIGNAL", "SIGNAL")]
     fp = sum(v for (truth, pred), v in confusion.items() if pred == "SIGNAL" and truth != "SIGNAL")
     precision = tp / (tp + fp) if (tp + fp) else 0.0
-    assert precision >= 0.90, f"SIGNAL precision {precision:.2f} < 0.90 (confusion={dict(confusion)})"
+    assert precision >= 0.95, f"SIGNAL precision {precision:.2f} < 0.95 (confusion={dict(confusion)})"
 
 
 @pytest.mark.golden

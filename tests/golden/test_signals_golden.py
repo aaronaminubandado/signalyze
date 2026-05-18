@@ -65,6 +65,6 @@ def test_golden_signal_extraction_exact_match_threshold() -> None:
             failures.append(f"{r['id']}: {why}")
 
     exact_match = matches / len(records)
-    assert exact_match >= 0.90, (
-        f"Exact match {exact_match:.2f} < 0.90. Failures:\n" + "\n".join(failures)
+    assert exact_match >= 0.95, (
+        f"Exact match {exact_match:.2f} < 0.95. Failures:\n" + "\n".join(failures)
     )
