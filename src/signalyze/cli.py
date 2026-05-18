@@ -372,6 +372,77 @@ def link_export_review(
 
 
 app.add_typer(link_app, name="link")
+
+
+@evaluate_app.command("reported")
+def evaluate_reported(
+    min_link_confidence: float = typer.Option(0.6, "--min-link-confidence"),
+    group_id: str | None = typer.Option(None, "--group"),
+) -> None:
+    """Compute reported outcomes from linked follow-ups."""
+    from signalyze.evaluate import compute_reported_outcomes
+
+    settings = get_settings()
+    logger = get_logger("signalyze.cli.evaluate")
+    db_path = settings.resolve(settings.paths.db_path)
+    with open_database(db_path) as db:
+        stats = compute_reported_outcomes(
+            db=db,
+            min_link_confidence=min_link_confidence,
+            settings=settings,
+            group_id=group_id,
+        )
+    logger.info(
+        "Reported outcomes: signals=%d written=%d by_state=%s",
+        stats.signals,
+        stats.outcomes_written,
+        stats.by_state,
+    )
+    typer.echo(
+        f"evaluate reported: signals={stats.signals} written={stats.outcomes_written} "
+        f"by_state={stats.by_state}"
+    )
+
+
+@evaluate_app.command("leaderboard")
+def evaluate_leaderboard(
+    min_link_confidence: float = typer.Option(0.6, "--min-link-confidence"),
+) -> None:
+    """Print a reported-win-rate leaderboard per group."""
+    settings = get_settings()
+    db_path = settings.resolve(settings.paths.db_path)
+    with open_database(db_path) as db:
+        rows = db.conn.execute(
+            """
+            SELECT s.group_id,
+                   COUNT(*) AS n_signals,
+                   SUM(CASE WHEN r.final_state = 'WIN' THEN 1 ELSE 0 END) AS wins,
+                   SUM(CASE WHEN r.final_state = 'LOSS' THEN 1 ELSE 0 END) AS losses,
+                   SUM(CASE WHEN r.final_state = 'OPEN' THEN 1 ELSE 0 END) AS open_,
+                   SUM(CASE WHEN r.final_state = 'NO_REPORT' THEN 1 ELSE 0 END) AS no_report
+            FROM signals s
+            JOIN reported_outcomes r ON r.signal_id = s.signal_id
+            GROUP BY s.group_id
+            ORDER BY wins DESC
+            """
+        ).fetchall()
+
+    typer.echo(
+        f"{'group_id':<20} {'n':>5} {'wins':>5} {'losses':>7} "
+        f"{'open':>5} {'no_rep':>7} {'win%':>6}"
+    )
+    for row in rows:
+        n = row["n_signals"] or 0
+        wins = row["wins"] or 0
+        losses = row["losses"] or 0
+        decided = wins + losses
+        win_rate = (wins / decided * 100.0) if decided else 0.0
+        typer.echo(
+            f"{row['group_id']:<20} {n:>5} {wins:>5} {losses:>7} {row['open_'] or 0:>5} "
+            f"{row['no_report'] or 0:>7} {win_rate:>5.1f}%"
+        )
+
+
 app.add_typer(evaluate_app, name="evaluate")
 app.add_typer(market_app, name="market")
 app.add_typer(compare_app, name="compare")
