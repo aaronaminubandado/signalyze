@@ -404,6 +404,55 @@ def evaluate_reported(
     )
 
 
+@evaluate_app.command("actual")
+def evaluate_actual(
+    group_id: str | None = typer.Option(None, "--group"),
+    max_holding_hours: float | None = typer.Option(None, "--max-holding-hours"),
+    default_sl_policy: str | None = typer.Option(None, "--default-sl-policy"),
+    win_policy: str | None = typer.Option(None, "--win-policy"),
+) -> None:
+    """Walk-forward simulate every signal against cached market bars."""
+    from signalyze.evaluate import SimulationConfig, simulate_all
+
+    settings = get_settings()
+    logger = get_logger("signalyze.cli.evaluate")
+    db_path = settings.resolve(settings.paths.db_path)
+
+    config: SimulationConfig | None = None
+    if any(v is not None for v in (max_holding_hours, default_sl_policy, win_policy)):
+        from signalyze.domain import WinPolicy
+
+        base = SimulationConfig(
+            win_policy=WinPolicy(settings.evaluate.win_policy),
+            max_holding_hours=settings.evaluate.max_holding_hours,
+            default_sl_policy=settings.evaluate.default_sl_policy,
+            default_sl_pips=settings.evaluate.default_sl_pips,
+        )
+        config = SimulationConfig(
+            win_policy=WinPolicy(win_policy) if win_policy else base.win_policy,
+            max_holding_hours=max_holding_hours
+            if max_holding_hours is not None
+            else base.max_holding_hours,
+            default_sl_policy=default_sl_policy or base.default_sl_policy,
+            default_sl_pips=base.default_sl_pips,
+        )
+
+    with open_database(db_path) as db:
+        stats = simulate_all(db=db, settings=settings, group_id=group_id, config=config)
+
+    logger.info(
+        "Actual outcomes: signals=%d written=%d insufficient=%d by_state=%s",
+        stats.signals,
+        stats.outcomes_written,
+        stats.skipped_insufficient_data,
+        stats.by_state,
+    )
+    typer.echo(
+        f"evaluate actual: signals={stats.signals} written={stats.outcomes_written} "
+        f"insufficient={stats.skipped_insufficient_data} by_state={stats.by_state}"
+    )
+
+
 @evaluate_app.command("leaderboard")
 def evaluate_leaderboard(
     min_link_confidence: float = typer.Option(0.6, "--min-link-confidence"),
