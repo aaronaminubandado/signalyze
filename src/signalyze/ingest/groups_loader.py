@@ -101,3 +101,45 @@ def coerce_entity_target(target: str) -> int | str:
     if re.fullmatch(r"-?\d+", cleaned):
         return int(cleaned)
     return cleaned
+
+
+def build_label_map(groups_file: Path) -> dict[str, str]:
+    """Return a `{group_id: label}` mapping for every entry with an `id:` field.
+
+    Missing files yield an empty map (callers fall back to the raw `group_id`).
+    Used by reporting surfaces to display human-readable channel names instead
+    of opaque numeric Telegram IDs.
+    """
+    if not groups_file.exists():
+        return {}
+
+    mapping: dict[str, str] = {}
+    for raw_line in groups_file.read_text(encoding="utf-8").splitlines():
+        stripped = raw_line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        id_match = re.search(r"\bid:\s*(-?\d+)\b", stripped, flags=re.IGNORECASE)
+        if not id_match:
+            continue
+        label = stripped.split("|", 1)[0].strip()
+        if not label:
+            continue
+        mapping[id_match.group(1)] = label
+    return mapping
+
+
+def resolve_group_label(
+    group_id: str,
+    label_map: dict[str, str],
+    *,
+    max_len: int = 36,
+) -> str:
+    """Return the human-readable label for `group_id`, falling back to the id.
+
+    `max_len` truncates over-long labels (with an ellipsis) so they fit into
+    fixed-width CLI tables without breaking alignment.
+    """
+    label = label_map.get(group_id) or group_id
+    if max_len > 0 and len(label) > max_len:
+        return label[: max_len - 1] + "…"
+    return label

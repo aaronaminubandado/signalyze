@@ -5,9 +5,19 @@ from signalyze.analytics.metrics import (
     compute_group_metrics,
     iter_group_metrics,
 )
+from signalyze.analytics.tp_depth import (
+    GroupTpDepth,
+    TpLevelStat,
+    compute_tp_depth,
+    iter_tp_depth,
+)
 
 __all__ = [
     "GroupMetrics",
+    "GroupTpDepth",
+    "TpLevelStat",
     "compute_group_metrics",
+    "compute_tp_depth",
     "iter_group_metrics",
+    "iter_tp_depth",
 ]

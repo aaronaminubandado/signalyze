@@ -11,8 +11,15 @@ from __future__ import annotations
 from html import escape
 from pathlib import Path
 
-from signalyze.analytics import GroupMetrics, iter_group_metrics
+from signalyze.analytics import (
+    GroupMetrics,
+    GroupTpDepth,
+    iter_group_metrics,
+    iter_tp_depth,
+)
 from signalyze.compare import compute_discrepancies
+from signalyze.config import get_settings
+from signalyze.ingest import build_label_map, resolve_group_label
 from signalyze.storage import Database
 
 
@@ -24,9 +31,16 @@ def render_html_report(
     start_utc: str | None = None,
     end_utc: str | None = None,
 ) -> Path:
+    settings = get_settings()
+    label_map = build_label_map(settings.resolve(settings.paths.groups_file))
+
     metrics = sorted(
         iter_group_metrics(db=db, start_utc=start_utc, end_utc=end_utc),
         key=lambda m: -(m.actual_win_rate or 0.0),
+    )
+    tp_depth_rows = sorted(
+        iter_tp_depth(db=db, start_utc=start_utc, end_utc=end_utc),
+        key=lambda r: -(_first_tp_rate(r) or -1.0),
     )
     discrepancies = compute_discrepancies(db=db)
     categories: dict[str, int] = {}
@@ -36,7 +50,9 @@ def render_html_report(
     html_doc = _render(
         title=title,
         metrics=metrics,
+        tp_depth_rows=tp_depth_rows,
         categories=categories,
+        label_map=label_map,
         start_utc=start_utc,
         end_utc=end_utc,
     )
@@ -49,15 +65,23 @@ def _render(
     *,
     title: str,
     metrics: list[GroupMetrics],
+    tp_depth_rows: list[GroupTpDepth],
     categories: dict[str, int],
+    label_map: dict[str, str],
     start_utc: str | None,
     end_utc: str | None,
 ) -> str:
-    rows = "\n".join(_row(m) for m in metrics)
+    rows = "\n".join(_row(m, label_map) for m in metrics)
     cat_rows = "\n".join(
         f"<tr><td>{escape(cat)}</td><td>{count}</td></tr>"
         for cat, count in sorted(categories.items(), key=lambda kv: -kv[1])
     )
+    visible_levels = (
+        min(5, max((row.max_tp_level for row in tp_depth_rows), default=0))
+        if tp_depth_rows
+        else 0
+    )
+    tp_depth_html = _render_tp_depth_section(tp_depth_rows, visible_levels, label_map)
     window = ""
     if start_utc or end_utc:
         window = (
@@ -104,6 +128,8 @@ def _render(
   </tbody>
 </table>
 
+{tp_depth_html}
+
 <h2>Discrepancy categories</h2>
 <table>
   <thead><tr><th>Category</th><th>Signals</th></tr></thead>
@@ -118,7 +144,7 @@ def _render(
 """
 
 
-def _row(m: GroupMetrics) -> str:
+def _row(m: GroupMetrics, label_map: dict[str, str]) -> str:
     rep = (
         f"{m.reported_win_rate * 100:.1f}%"
         if m.reported_win_rate is not None
@@ -139,9 +165,10 @@ def _row(m: GroupMetrics) -> str:
     pips = f"{m.avg_realized_pips:.1f}" if m.avg_realized_pips is not None else "n/a"
     rr = f"{m.avg_realized_rr:.2f}" if m.avg_realized_rr is not None else "n/a"
 
+    label = resolve_group_label(m.group_id, label_map, max_len=0)
     return (
         f"<tr>"
-        f"<td>{escape(m.group_id)}</td>"
+        f"<td title='{escape(m.group_id)}'>{escape(label)}</td>"
         f"<td class='num'>{m.n_signals}</td>"
         f"<td class='num'>{rep}</td>"
         f"<td class='num'>{act}</td>"
@@ -152,3 +179,73 @@ def _row(m: GroupMetrics) -> str:
         f"<td class='num'>{m.insufficient_data}</td>"
         f"</tr>"
     )
+
+
+def _first_tp_rate(row: GroupTpDepth) -> float | None:
+    first = row.level(1)
+    return first.hit_rate if first is not None else None
+
+
+def _render_tp_depth_section(
+    rows: list[GroupTpDepth],
+    visible_levels: int,
+    label_map: dict[str, str],
+) -> str:
+    if not rows or visible_levels <= 0:
+        return ""
+
+    tp_headers = "".join(f"<th>TP{level}%</th>" for level in range(1, visible_levels + 1))
+    body_rows = "\n".join(_tp_depth_row(row, visible_levels, label_map) for row in rows)
+    footnote = (
+        "<p class='muted'>Denominator: signals that defined TPn AND have a reported "
+        "outcome other than NO_REPORT. Run "
+        "<code>signalyze evaluate tp-depth --max-level=N</code> for deeper levels.</p>"
+    )
+
+    return (
+        "<h2>TP depth per group</h2>\n"
+        "<table>\n"
+        "  <thead>\n"
+        "    <tr>\n"
+        "      <th>Group</th><th>Signals</th><th>Reported</th><th>NoReport%</th>"
+        f"{tp_headers}<th>SL%</th>\n"
+        "    </tr>\n"
+        "  </thead>\n"
+        "  <tbody>\n"
+        f"    {body_rows}\n"
+        "  </tbody>\n"
+        "</table>\n"
+        f"{footnote}"
+    )
+
+
+def _tp_depth_row(
+    row: GroupTpDepth,
+    visible_levels: int,
+    label_map: dict[str, str],
+) -> str:
+    no_report = _format_rate(row.no_report_rate)
+    sl_rate = _format_rate(row.sl_hit_rate)
+    cells: list[str] = []
+    for level in range(1, visible_levels + 1):
+        stat = row.level(level)
+        rate = stat.hit_rate if stat is not None else None
+        cells.append(f"<td class='num'>{_format_rate(rate)}</td>")
+    tp_cells = "".join(cells)
+    label = resolve_group_label(row.group_id, label_map, max_len=0)
+    return (
+        "<tr>"
+        f"<td title='{escape(row.group_id)}'>{escape(label)}</td>"
+        f"<td class='num'>{row.n_signals}</td>"
+        f"<td class='num'>{row.n_reported}</td>"
+        f"<td class='num'>{no_report}</td>"
+        f"{tp_cells}"
+        f"<td class='num'>{sl_rate}</td>"
+        "</tr>"
+    )
+
+
+def _format_rate(value: float | None) -> str:
+    if value is None:
+        return "n/a"
+    return f"{value * 100:.1f}%"

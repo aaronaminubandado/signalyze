@@ -458,8 +458,12 @@ def evaluate_leaderboard(
     min_link_confidence: float = typer.Option(0.6, "--min-link-confidence"),
 ) -> None:
     """Print a reported-win-rate leaderboard per group."""
+    from signalyze.ingest import build_label_map, resolve_group_label
+
     settings = get_settings()
     db_path = settings.resolve(settings.paths.db_path)
+    label_map = build_label_map(settings.resolve(settings.paths.groups_file))
+    label_width = 36
     with open_database(db_path) as db:
         rows = db.conn.execute(
             """
@@ -477,7 +481,7 @@ def evaluate_leaderboard(
         ).fetchall()
 
     typer.echo(
-        f"{'group_id':<20} {'n':>5} {'wins':>5} {'losses':>7} "
+        f"{'group':<{label_width}} {'n':>5} {'wins':>5} {'losses':>7} "
         f"{'open':>5} {'no_rep':>7} {'win%':>6}"
     )
     for row in rows:
@@ -486,10 +490,84 @@ def evaluate_leaderboard(
         losses = row["losses"] or 0
         decided = wins + losses
         win_rate = (wins / decided * 100.0) if decided else 0.0
+        label = resolve_group_label(row["group_id"], label_map, max_len=label_width)
         typer.echo(
-            f"{row['group_id']:<20} {n:>5} {wins:>5} {losses:>7} {row['open_'] or 0:>5} "
+            f"{label:<{label_width}} {n:>5} {wins:>5} {losses:>7} {row['open_'] or 0:>5} "
             f"{row['no_report'] or 0:>7} {win_rate:>5.1f}%"
         )
+
+
+@evaluate_app.command("tp-depth")
+def evaluate_tp_depth(
+    min_signals: int = typer.Option(
+        20, "--min-signals", help="Hide groups with fewer than this many signals."
+    ),
+    max_level: int = typer.Option(
+        5, "--max-level", help="Cap the number of TPn columns rendered."
+    ),
+) -> None:
+    """Per-group TP-depth breakdown: how often each TP level is reached.
+
+    Denominator for TPn: signals that defined at least n take-profits AND have
+    a reported outcome other than NO_REPORT.
+    """
+    from signalyze.analytics import GroupTpDepth, iter_tp_depth
+    from signalyze.ingest import build_label_map, resolve_group_label
+
+    settings = get_settings()
+    db_path = settings.resolve(settings.paths.db_path)
+    label_map = build_label_map(settings.resolve(settings.paths.groups_file))
+    label_width = 36
+    with open_database(db_path) as db:
+        rows = [r for r in iter_tp_depth(db=db) if r.n_signals >= min_signals]
+
+    if not rows:
+        typer.echo("No groups meet the --min-signals threshold.")
+        return
+
+    visible_levels = min(max_level, max(r.max_tp_level for r in rows))
+    visible_levels = max(visible_levels, 1)
+
+    def _tp1_rate(row: GroupTpDepth) -> float:
+        first = row.level(1)
+        if first is None or first.hit_rate is None:
+            return -1.0
+        return first.hit_rate
+
+    rows.sort(key=_tp1_rate, reverse=True)
+
+    header_cells = [
+        f"{'group':<{label_width}}",
+        f"{'n':>5}",
+        f"{'rep':>5}",
+        f"{'no_rep%':>7}",
+    ]
+    for level in range(1, visible_levels + 1):
+        header_cells.append(f"{'TP' + str(level) + '%':>7}")
+    header_cells.append(f"{'SL%':>6}")
+    typer.echo(" ".join(header_cells))
+
+    for row in rows:
+        no_report_pct = _format_pct(row.no_report_rate)
+        sl_pct = _format_pct(row.sl_hit_rate)
+        label = resolve_group_label(row.group_id, label_map, max_len=label_width)
+        cells = [
+            f"{label:<{label_width}}",
+            f"{row.n_signals:>5}",
+            f"{row.n_reported:>5}",
+            f"{no_report_pct:>7}",
+        ]
+        for level in range(1, visible_levels + 1):
+            stat = row.level(level)
+            cells.append(f"{_format_pct(stat.hit_rate) if stat else 'n/a':>7}")
+        cells.append(f"{sl_pct:>6}")
+        typer.echo(" ".join(cells))
+
+
+def _format_pct(value: float | None) -> str:
+    if value is None:
+        return "n/a"
+    return f"{value * 100:.1f}"
 
 
 app.add_typer(evaluate_app, name="evaluate")
