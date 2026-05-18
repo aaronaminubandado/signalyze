@@ -555,6 +555,94 @@ def market_fetch(
 
 
 app.add_typer(market_app, name="market")
+
+
+@compare_app.command("run")
+def compare_run(
+    group_id: str | None = typer.Option(None, "--group"),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Write per-signal CSV."),
+) -> None:
+    """Compare reported vs actual outcomes per signal and summarize categories."""
+    from signalyze.compare import compute_discrepancies
+
+    settings = get_settings()
+    db_path = settings.resolve(settings.paths.db_path)
+    with open_database(db_path) as db:
+        rows = compute_discrepancies(db=db, group_id=group_id)
+
+    by_category: dict[str, int] = {}
+    for row in rows:
+        by_category[row.category.value] = by_category.get(row.category.value, 0) + 1
+
+    typer.echo(f"compare: signals={len(rows)} categories={by_category}")
+
+    if output is not None:
+        import csv as _csv
+
+        output_path = settings.resolve(output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with output_path.open("w", encoding="utf-8", newline="") as handle:
+            writer = _csv.writer(handle)
+            writer.writerow(
+                [
+                    "signal_id",
+                    "group_id",
+                    "reported_state",
+                    "actual_state",
+                    "category",
+                    "reported_pips",
+                    "actual_pips",
+                ]
+            )
+            for row in rows:
+                writer.writerow(
+                    [
+                        row.signal_id,
+                        row.group_id,
+                        row.reported_state.value,
+                        row.actual_state.value,
+                        row.category.value,
+                        row.reported_pips,
+                        row.actual_pips,
+                    ]
+                )
+        typer.echo(f"compare: wrote {len(rows)} rows to {output_path}")
+
+
+@compare_app.command("metrics")
+def compare_metrics(
+    start_utc: str | None = typer.Option(None, "--start"),
+    end_utc: str | None = typer.Option(None, "--end"),
+) -> None:
+    """Print per-group reported-vs-actual analytics table."""
+    from signalyze.analytics import iter_group_metrics
+
+    settings = get_settings()
+    db_path = settings.resolve(settings.paths.db_path)
+    with open_database(db_path) as db:
+        rows = sorted(
+            iter_group_metrics(db=db, start_utc=start_utc, end_utc=end_utc),
+            key=lambda m: -(m.actual_win_rate or 0.0),
+        )
+
+    header = (
+        f"{'group_id':<20} {'n':>4} {'rep_w%':>7} {'act_w%':>7} {'gap':>6} "
+        f"{'avg_pips':>9} {'avg_rr':>7} {'amb':>4} {'no_data':>8}"
+    )
+    typer.echo(header)
+    typer.echo("-" * len(header))
+    for m in rows:
+        rep = f"{(m.reported_win_rate or 0) * 100:6.1f}%" if m.reported_win_rate is not None else "    n/a"
+        act = f"{(m.actual_win_rate or 0) * 100:6.1f}%" if m.actual_win_rate is not None else "    n/a"
+        gap = f"{(m.win_rate_gap or 0) * 100:+5.1f}" if m.win_rate_gap is not None else "  n/a"
+        pips = f"{m.avg_realized_pips:8.1f}" if m.avg_realized_pips is not None else "     n/a"
+        rr = f"{m.avg_realized_rr:6.2f}" if m.avg_realized_rr is not None else "   n/a"
+        typer.echo(
+            f"{m.group_id:<20} {m.n_signals:>4} {rep:>7} {act:>7} {gap:>6} "
+            f"{pips:>9} {rr:>7} {m.ambiguous_bars:>4} {m.insufficient_data:>8}"
+        )
+
+
 app.add_typer(compare_app, name="compare")
 app.add_typer(report_app, name="report")
 
