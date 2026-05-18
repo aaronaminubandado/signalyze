@@ -319,6 +319,58 @@ def parse_follow_ups(
 
 
 app.add_typer(parse_app, name="parse")
+
+
+@link_app.command("run")
+def link_run(
+    group_id: str | None = typer.Option(None, "--group"),
+    use_llm: bool = typer.Option(True, "--use-llm/--no-llm"),
+) -> None:
+    """Link follow-ups to their parent signals."""
+    from signalyze.link import Linker
+    from signalyze.llm import get_llm_client
+
+    settings = get_settings()
+    logger = get_logger("signalyze.cli.link")
+    db_path = settings.resolve(settings.paths.db_path)
+    llm = get_llm_client() if use_llm else None
+    linker = Linker(settings=settings, llm_client=llm)
+
+    with open_database(db_path) as db:
+        stats = linker.run(db, group_id=group_id)
+
+    logger.info(
+        "Linker: follow_ups=%d linked=%d unlinked=%d low_conf=%d by_method=%s",
+        stats.follow_ups,
+        stats.linked,
+        stats.unlinked,
+        stats.low_confidence,
+        stats.by_method,
+    )
+    typer.echo(
+        f"link: follow_ups={stats.follow_ups} linked={stats.linked} "
+        f"unlinked={stats.unlinked} low_conf={stats.low_confidence} by_method={stats.by_method}"
+    )
+
+
+@link_app.command("export-review")
+def link_export_review(
+    output: Path = typer.Option(
+        Path("data/reports/links_low_confidence.csv"), "--output", "-o",
+    ),
+    threshold: float = typer.Option(0.6, "--threshold"),
+) -> None:
+    """Export low-confidence links to a CSV for manual review."""
+    from signalyze.link.linker import export_low_confidence_csv
+
+    settings = get_settings()
+    db_path = settings.resolve(settings.paths.db_path)
+    output_path = settings.resolve(output)
+    with open_database(db_path) as db:
+        count = export_low_confidence_csv(db, output_path, threshold=threshold)
+    typer.echo(f"export-review: {count} links written to {output_path}")
+
+
 app.add_typer(link_app, name="link")
 app.add_typer(evaluate_app, name="evaluate")
 app.add_typer(market_app, name="market")
