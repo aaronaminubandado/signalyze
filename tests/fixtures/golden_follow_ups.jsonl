@@ -1,0 +1,31 @@
+{"id":"f1","text":"#XAUUSD\nTP1 HIT 30+ PIPS PROFIT DONE","event_type":"TP_HIT","tp_index":1,"claimed_pips":30.0}
+{"id":"f2","text":"#XAUUSD TP2 HIT 60+ PIPS PROFIT DONE","event_type":"TP_HIT","tp_index":2,"claimed_pips":60.0}
+{"id":"f3","text":"TP3 HIT 100+ PIPS PROFIT DONE","event_type":"TP_HIT","tp_index":3,"claimed_pips":100.0}
+{"id":"f4","text":"#GOLD TP4 HIT 150+ PIPS PROFIT BOOK Enjoy Money","event_type":"TP_HIT","tp_index":4,"claimed_pips":150.0}
+{"id":"f5","text":"All TPs hit. Massive profit","event_type":"TP_HIT","tp_index":null}
+{"id":"f6","text":"SL Hit Wait For Recovery","event_type":"SL_HIT"}
+{"id":"f7","text":"UNFORTUNATELY SL HIT GUYS","event_type":"SL_HIT"}
+{"id":"f8","text":"Stopped out","event_type":"SL_HIT"}
+{"id":"f9","text":"Move SL to entry / break even","event_type":"BE_MOVED"}
+{"id":"f10","text":"BE secured","event_type":"BE_MOVED"}
+{"id":"f11","text":"Move SL to 4710","event_type":"SL_MOVED","new_stop_loss":4710.0}
+{"id":"f12","text":"Update SL to 4715","event_type":"SL_MOVED","new_stop_loss":4715.0}
+{"id":"f13","text":"Close all positions, market reversed","event_type":"MANUAL_CLOSE"}
+{"id":"f14","text":"Trade closed at 4720","event_type":"MANUAL_CLOSE","claimed_price":4720.0}
+{"id":"f15","text":"Cancel the previous signal","event_type":"CANCEL"}
+{"id":"f16","text":"Signal voided","event_type":"CANCEL"}
+{"id":"f17","text":"Running +20 pips","event_type":"UPDATE","claimed_pips":20.0}
+{"id":"f18","text":"+45 pips","event_type":"UPDATE","claimed_pips":45.0}
+{"id":"f19","text":"TP1 hit! ✔️ That gives us +20 pips. Move SL to 5120","event_type":"TP_HIT","tp_index":1,"claimed_pips":20.0}
+{"id":"f20","text":"Signal voided","event_type":"CANCEL"}
+{"id":"f21","text":"Ignore the signal","event_type":"CANCEL"}
+{"id":"f22","text":"Cancelling","event_type":"CANCEL"}
+{"id":"f23","text":"GOLD Tp 1 successful Running 40 pips profit","event_type":"TP_HIT","tp_index":1}
+{"id":"f24","text":"XAUUSD FULL CLOSE NOW","event_type":"MANUAL_CLOSE"}
+{"id":"f25","text":"Stop loss hit","event_type":"SL_HIT"}
+{"id":"f26","text":"Running 190 pips profit","event_type":"UPDATE","claimed_pips":190.0}
+{"id":"f27","text":"-25 pips","event_type":"UPDATE","claimed_pips":-25.0}
+{"id":"f28","text":"Move SL to break even now","event_type":"BE_MOVED"}
+{"id":"f29","text":"SL moved to 4715","event_type":"SL_MOVED","new_stop_loss":4715.0}
+{"id":"reject1","text":"See you in our live trading session later!","event_type":null}
+{"id":"reject2","text":"Big Blast Big Blast","event_type":null}
