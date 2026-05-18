@@ -1,0 +1,43 @@
+{"message_uid":"groupA:16160","text":"#XAUUSD SELL   4664\nSL 4678\nTP 4661\nTP 4658\nTP 4655\nTP 4641\nTP 4647\n\nFollow Proper Money Management","expected":"SIGNAL","note":"canonical XAUUSD SELL with SL+TPs"}
+{"message_uid":"groupA:16167","text":"#XAUUSD SELL 4673\nSL 4685\nTP 4670\nTP 4667\nTP 4664\nTP 4661\nTP 4658","expected":"SIGNAL","note":"compact signal"}
+{"message_uid":"groupA:16180","text":"#XAUUSD BUY   4829\nSL 4815\nTP 4832\nTP 4836\nTP 4840\nTP 4844","expected":"SIGNAL","note":"BUY signal"}
+{"message_uid":"groupB:50805","text":"XAUUSD Sell 4675/4678\n\nTP1. @ 4672\nTP2. @ 4669\nTP3. @ 4664\nTP4. @ 4660\n\nSL.    @ 4686","expected":"SIGNAL","note":"sell with entry range and @ notation"}
+{"message_uid":"groupB:50849","text":"XAUUSD Sell 4699/4702\n\nTP1. @ 4696\nTP2. @ 4693\n\nSL.    @ 4711","expected":"SIGNAL","note":"sell with entry range short"}
+{"message_uid":"groupB:50859","text":"XAUUSD Sell 4715/4718\n\nTP1. @ 4712\nTP2. @ 4709\nTP3. @ 4705\n\nSL.    @ 4727","expected":"SIGNAL","note":"sell with entry range"}
+{"message_uid":"synthetic:1","text":"GOLD BUY NOW 4710\nSL 4700\nTP 4720\nTP 4730","expected":"SIGNAL","note":"GOLD alias should still classify as signal"}
+{"message_uid":"synthetic:2","text":"#XAUUSD BUY ZONE 4700-4710\nSTOP LOSS 4690\nTAKE PROFIT 1: 4720\nTAKE PROFIT 2: 4730","expected":"SIGNAL","note":"verbose BUY ZONE form"}
+{"message_uid":"synthetic:3","text":"SELL XAUUSD @ 4690\nSL: 4700\nTP1: 4685\nTP2: 4680","expected":"SIGNAL","note":"@-prefixed entry"}
+{"message_uid":"synthetic:4","text":"BUY GOLD @ 4710 SL 4700 TP1 4720 TP2 4730 TP3 4740","expected":"SIGNAL","note":"single-line signal"}
+{"message_uid":"synthetic:5","text":"XAUUSD\nSELL LIMIT 4750\nSL 4760\nTP 4740\nTP 4730","expected":"SIGNAL","note":"sell limit signal"}
+{"message_uid":"synthetic:6","text":"#XAUUSD\nBuy now\nEntry: 4715\nSL: 4705\nTP1: 4725\nTP2: 4735","expected":"SIGNAL","note":"explicit entry keyword"}
+{"message_uid":"synthetic:7","text":"GOLD SELL 4800 SL 4815 TP 4790 TP 4780 TP 4770","expected":"SIGNAL","note":"GOLD alias single-line"}
+{"message_uid":"synthetic:8","text":"#XAUUSD SELL 4951\nSL 4965\nTP 4948\nTP 4945","expected":"SIGNAL","note":"plain sell"}
+{"message_uid":"synthetic:9","text":"BUY XAUUSD\nEntry zone 4680-4690\nSL 4670\nTP1 4700\nTP2 4710","expected":"SIGNAL","note":"buy entry zone"}
+{"message_uid":"synthetic:10","text":"XAUUSD BUY @ 4700\nStop Loss 4680\nTake Profit 1 4720\nTake Profit 2 4740","expected":"SIGNAL","note":"verbose Take Profit"}
+
+{"message_uid":"groupA:16162","text":"#XAUUSD\nTP1 HIT 30+ PIPS PROFIT DONE","expected":"FOLLOW_UP","note":"TP1 hit announcement"}
+{"message_uid":"groupA:16168","text":"#XAUUSD\nTP1 HIT 30+ PIPS PROFIT DONE","expected":"FOLLOW_UP","note":"repeat tp hit"}
+{"message_uid":"synthetic:f1","text":"TP1 HIT +30 PIPS","expected":"FOLLOW_UP","note":"short tp hit"}
+{"message_uid":"synthetic:f2","text":"TP2 hit +60 pips","expected":"FOLLOW_UP","note":"tp2 hit"}
+{"message_uid":"synthetic:f3","text":"SL hit -50 pips","expected":"FOLLOW_UP","note":"sl hit"}
+{"message_uid":"synthetic:f4","text":"All TPs hit. Massive profit","expected":"FOLLOW_UP","note":"all tps hit"}
+{"message_uid":"synthetic:f5","text":"Move SL to entry / break even","expected":"FOLLOW_UP","note":"move sl to BE"}
+{"message_uid":"synthetic:f6","text":"Close all positions, market reversed","expected":"FOLLOW_UP","note":"manual close"}
+{"message_uid":"synthetic:f7","text":"Running +20 pips","expected":"FOLLOW_UP","note":"running profit"}
+{"message_uid":"synthetic:f8","text":"Stopped out","expected":"FOLLOW_UP","note":"stopped"}
+{"message_uid":"synthetic:f9","text":"Trade closed at +45 pips profit","expected":"FOLLOW_UP","note":"closed at"}
+{"message_uid":"synthetic:f10","text":"Booked TP1 ✅","expected":"FOLLOW_UP","note":"booked tp"}
+{"message_uid":"synthetic:f11","text":"BE secured","expected":"FOLLOW_UP","note":"BE secured"}
+{"message_uid":"synthetic:f12","text":"Cancel the previous signal","expected":"FOLLOW_UP","note":"cancel"}
+{"message_uid":"synthetic:f13","text":"Update SL to 4710","expected":"FOLLOW_UP","note":"update sl"}
+
+{"message_uid":"groupC:4608","text":"NEW USER DEAL - Buy XAUT at 50% OFF\nJoin Here: https://example.com/launchpad","expected":"NOISE","note":"promotion not a signal"}
+{"message_uid":"groupA:16640","text":"VIP_SIGNALS account management Service Available\nContact me. @vipseller","expected":"NOISE","note":"vip subscription pitch"}
+{"message_uid":"groupD:15070","text":"I entered with my other acct also\nTo use the exchange https://example.com/ref?code=xxx\nClaim bonus of up to $500","expected":"NOISE","note":"affiliate promo"}
+{"message_uid":"synthetic:n1","text":"Good morning team, ready for the day","expected":"NOISE","note":"generic chat"}
+{"message_uid":"synthetic:n2","text":"PAYMENT METHOD: 0000000000 send proof to messenger","expected":"NOISE","note":"payment pitch"}
+{"message_uid":"synthetic:n3","text":"","expected":"NOISE","note":"empty"}
+{"message_uid":"synthetic:n4","text":"💯💯💯","expected":"NOISE","note":"emoji only"}
+{"message_uid":"synthetic:n5","text":"Will share new signal soon, stay tuned","expected":"NOISE","note":"meta chatter"}
+{"message_uid":"synthetic:n6","text":"https://example.com/join/abcdef","expected":"NOISE","note":"link only"}
+{"message_uid":"synthetic:n7","text":"Market analysis: fed meeting today expect volatility","expected":"NOISE","note":"market commentary without signal"}

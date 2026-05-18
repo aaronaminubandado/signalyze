@@ -160,6 +160,87 @@ def _as_naive_utc(value: datetime) -> datetime:
 
 
 app.add_typer(ingest_app, name="ingest")
+
+
+@classify_app.command("run")
+def classify_run(
+    use_llm: bool = typer.Option(
+        True, "--use-llm/--no-llm", help="Enable LLM fallback for uncertain rule decisions."
+    ),
+    group_id: str | None = typer.Option(
+        None, "--group", help="Restrict to one group_id."
+    ),
+    limit: int | None = typer.Option(
+        None, "--limit", help="Only classify the first N unclassified messages."
+    ),
+) -> None:
+    """Classify every message in the canonical store."""
+    from signalyze.classify import RuleClassifier
+    from signalyze.classify.runner import classify_messages
+    from signalyze.domain import Message
+    from signalyze.llm import get_llm_client
+
+    settings = get_settings()
+    logger = get_logger("signalyze.cli.classify")
+    db_path = settings.resolve(settings.paths.db_path)
+
+    with open_database(db_path) as db:
+        sql = (
+            "SELECT m.* FROM messages m "
+            "LEFT JOIN message_classifications c ON c.message_uid = m.message_uid "
+            "WHERE c.message_uid IS NULL"
+        )
+        params: list[object] = []
+        if group_id is not None:
+            sql += " AND m.group_id = ?"
+            params.append(group_id)
+        sql += " ORDER BY m.timestamp_utc"
+        if limit is not None:
+            sql += f" LIMIT {int(limit)}"
+
+        rows = db.conn.execute(sql, params).fetchall()
+        messages = [
+            Message(
+                message_uid=row["message_uid"],
+                group_id=row["group_id"],
+                message_id=row["message_id"],
+                timestamp_utc=row["timestamp_utc"],
+                sender_id=row["sender_id"],
+                text=row["text"] or "",
+                reply_to_msg_id=row["reply_to_msg_id"],
+                views=row["views"],
+                forwards=row["forwards"],
+                reply_count=row["reply_count"],
+                ingested_at=row["ingested_at"],
+                ingest_method=row["ingest_method"],
+            )
+            for row in rows
+        ]
+
+        rule_classifier = RuleClassifier(settings)
+        llm_client = get_llm_client() if use_llm else None
+        stats = classify_messages(
+            db=db,
+            messages=messages,
+            rule_classifier=rule_classifier,
+            llm_client=llm_client,
+            use_llm=use_llm,
+        )
+
+    logger.info(
+        "Classified %d msgs (rules=%d llm=%d uncertain=%d) -> %s",
+        stats.total,
+        stats.rules_decisions,
+        stats.llm_decisions,
+        stats.uncertain,
+        stats.by_class,
+    )
+    typer.echo(
+        f"classify: total={stats.total} rules={stats.rules_decisions} llm={stats.llm_decisions} "
+        f"uncertain={stats.uncertain} by_class={stats.by_class}"
+    )
+
+
 app.add_typer(classify_app, name="classify")
 app.add_typer(parse_app, name="parse")
 app.add_typer(link_app, name="link")
