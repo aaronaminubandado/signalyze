@@ -1,0 +1,15 @@
+# Template for Signalyze's group manifest.
+#
+# Copy this file to `config/groups.txt` (which is gitignored) and replace the
+# anonymous placeholders with the channels you actually track. Each line:
+#
+#   <Label> | id: <-100xxxxxxxxx> | username: <handle or None>
+#
+# `id` is the canonical Telegram peer id (always starts with "-100" for
+# supergroups/channels). `username` is optional; use "None" if the channel
+# has no public @-handle.
+
+Channel A | id: -1000000000001 | username: None
+Channel B | id: -1000000000002 | username: None
+Channel C | id: -1000000000003 | username: None
+Channel D | id: -1000000000004 | username: None

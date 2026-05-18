@@ -1,0 +1,49 @@
+# Signalyze pipeline configuration. Override per-environment via .env where supported.
+
+[paths]
+groups_file = "config/groups.txt"
+data_dir = "data"
+raw_dir = "data/raw"
+db_path = "data/db/signalyze.sqlite"
+llm_cache_path = "data/cache/llm_cache.sqlite"
+reports_dir = "data/reports"
+
+[ingest]
+session_name = "session"
+date_from_utc = "2026-01-17T00:00:00Z"
+date_to_utc = "2026-04-17T00:00:00Z"
+
+[instrument]
+# v1 focuses on XAUUSD (gold). Other instruments require schema-clean additions.
+default = "XAUUSD"
+xauusd_min_price = 1500.0
+xauusd_max_price = 5000.0
+
+[classify]
+rule_confidence_threshold = 0.7
+classifier_version = "v0.1"
+
+[parse]
+parser_version = "v0.1"
+# Below this rule confidence, escalate to LLM (if enabled).
+llm_escalation_threshold = 0.6
+
+[link]
+# How long after a signal a follow-up may still reference it.
+active_window_hours = 48
+# Numeric tolerance (in price units) when matching follow-up prices to signal levels.
+price_match_tolerance = 1.0
+# If two candidates score within this delta, escalate to LLM tiebreaker.
+llm_tiebreak_epsilon = 0.05
+linker_version = "v0.1"
+
+[evaluate]
+win_policy = "ANY_TP"            # ANY_TP | FIRST_TP_ONLY | FINAL_CLOSE_VS_ENTRY
+max_holding_hours = 168          # 7 days
+default_sl_policy = "NONE"       # NONE | FIXED_PIPS | ATR
+default_sl_pips = 50.0
+evaluator_version = "v0.1"
+
+[market]
+interval = "1min"
+provider = "twelvedata"
