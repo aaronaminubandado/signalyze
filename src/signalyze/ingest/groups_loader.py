@@ -128,6 +128,21 @@ def build_label_map(groups_file: Path) -> dict[str, str]:
     return mapping
 
 
+def groups_manifest_hint(groups_file: Path) -> str | None:
+    """Return a one-line hint when human-readable labels are unavailable."""
+    if groups_file.exists() and build_label_map(groups_file):
+        return None
+    if not groups_file.exists():
+        return (
+            f"No {groups_file} — showing group_id. "
+            "Run: python scripts/get_groups.py > config/groups.txt"
+        )
+    return (
+        f"{groups_file} is empty or has no id: lines — showing group_id. "
+        "Run: python scripts/get_groups.py > config/groups.txt"
+    )
+
+
 def resolve_group_label(
     group_id: str,
     label_map: dict[str, str],

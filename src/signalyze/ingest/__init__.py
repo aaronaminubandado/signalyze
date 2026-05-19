@@ -3,6 +3,7 @@
 from signalyze.ingest.groups_loader import (
     GroupTarget,
     build_label_map,
+    groups_manifest_hint,
     parse_groups_file,
     resolve_group_label,
 )
@@ -16,6 +17,7 @@ __all__ = [
     "backfill_from_csv_dir",
     "build_label_map",
     "fetch_messages_for_groups",
+    "groups_manifest_hint",
     "parse_groups_file",
     "resolve_group_label",
 ]

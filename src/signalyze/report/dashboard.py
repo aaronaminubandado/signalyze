@@ -14,7 +14,7 @@ from __future__ import annotations
 from signalyze.analytics import iter_group_metrics, iter_tp_depth
 from signalyze.compare import compute_discrepancies
 from signalyze.config import get_settings
-from signalyze.ingest import build_label_map, resolve_group_label
+from signalyze.ingest import build_label_map, groups_manifest_hint, resolve_group_label
 from signalyze.storage import open_database
 
 
@@ -28,7 +28,11 @@ def main() -> None:
 
     settings = get_settings()
     db_path = settings.resolve(settings.paths.db_path)
-    label_map = build_label_map(settings.resolve(settings.paths.groups_file))
+    groups_path = settings.resolve(settings.paths.groups_file)
+    label_map = build_label_map(groups_path)
+    hint = groups_manifest_hint(groups_path)
+    if hint:
+        st.warning(hint)
 
     with st.sidebar:
         st.header("Filters")

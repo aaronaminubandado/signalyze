@@ -44,6 +44,10 @@ python -m venv venv && source venv/bin/activate
 pip install -e ".[dev,llm,report]"
 cp .env.example .env  # fill API_ID, API_HASH, OPENAI_API_KEY, TWELVEDATA_API_KEY
 
+# Private channel manifest (gitignored). Lists real names locally; never pushed to GitHub.
+python scripts/get_groups.py --filter-raw > config/groups.txt
+python scripts/get_groups.py --verify
+
 signalyze init-db
 signalyze ingest backfill                          # load data/raw/*.csv into messages
 signalyze classify run --no-llm                    # SIGNAL / FOLLOW_UP / NOISE / UNCERTAIN

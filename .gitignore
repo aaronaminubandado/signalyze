@@ -13,11 +13,46 @@ ENV/
 .env
 .env.*
 !.env.example
-*.session
-*.session-journal
+.envrc
+.netrc
+
+# API keys, certificates, and credential files
+secrets/
+private/
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+credentials.json
+credentials.*
+*.credentials
+*_secrets.json
+*.token
 
 # Per-deployment channel manifest (kept private; see groups.example.txt)
 config/groups.txt
+groups.local.txt
+**/groups.local.txt
+
+# Local config overrides (templates in config/*.example.* stay tracked)
+config/local.toml
+config/*.local.toml
+config/*.private.*
+
+# Telethon session files (session_name from settings.toml, default "session")
+*.session
+*.session-journal
+session
+session.*
+
+# SQLite databases and WAL sidecars (canonical store is under data/db/)
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.db
 
 # Generated data
 data/raw/
@@ -44,6 +79,7 @@ build/
 dist/
 *.egg-info/
 .eggs/
+src/**/*.egg-info/
 
 # Notebook checkpoints and editor noise
 .ipynb_checkpoints/

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from signalyze.ingest import build_label_map, resolve_group_label
+from signalyze.ingest import build_label_map, groups_manifest_hint, resolve_group_label
 
 
 def _write(path: Path, content: str) -> Path:
@@ -44,3 +44,18 @@ def test_resolve_group_label_truncates_long_labels() -> None:
 def test_resolve_group_label_max_len_zero_disables_truncation() -> None:
     mapping = {"-1": "X" * 80}
     assert resolve_group_label("-1", mapping, max_len=0) == "X" * 80
+
+
+def test_groups_manifest_hint_when_file_missing(tmp_path: Path) -> None:
+    missing = tmp_path / "groups.txt"
+    hint = groups_manifest_hint(missing)
+    assert hint is not None
+    assert "scripts/get_groups.py" in hint
+
+
+def test_groups_manifest_hint_none_when_labels_present(tmp_path: Path) -> None:
+    groups_file = _write(
+        tmp_path / "groups.txt",
+        "Alpha | id: -100123 | username: None\n",
+    )
+    assert groups_manifest_hint(groups_file) is None

@@ -8,7 +8,7 @@ from pathlib import Path
 import typer
 
 from signalyze import __version__
-from signalyze.config import get_settings
+from signalyze.config import Settings, get_settings
 from signalyze.storage import open_database
 from signalyze.utils.logging import get_logger, setup_logger
 from signalyze.utils.time import parse_utc
@@ -17,6 +17,17 @@ app = typer.Typer(
     add_completion=False,
     help="Telegram trading-signal collection, follow-up linking, and reported-vs-actual analytics.",
 )
+
+
+def _load_label_map(settings: Settings) -> dict[str, str]:
+    """Build group_id -> label map; warn on stderr when the private manifest is missing."""
+    from signalyze.ingest import build_label_map, groups_manifest_hint
+    groups_path = settings.resolve(settings.paths.groups_file)
+    label_map = build_label_map(groups_path)
+    hint = groups_manifest_hint(groups_path)
+    if hint:
+        typer.echo(hint, err=True)
+    return label_map
 
 
 @app.callback()
@@ -458,11 +469,11 @@ def evaluate_leaderboard(
     min_link_confidence: float = typer.Option(0.6, "--min-link-confidence"),
 ) -> None:
     """Print a reported-win-rate leaderboard per group."""
-    from signalyze.ingest import build_label_map, resolve_group_label
+    from signalyze.ingest import resolve_group_label
 
     settings = get_settings()
     db_path = settings.resolve(settings.paths.db_path)
-    label_map = build_label_map(settings.resolve(settings.paths.groups_file))
+    label_map = _load_label_map(settings)
     label_width = 36
     with open_database(db_path) as db:
         rows = db.conn.execute(
@@ -512,11 +523,11 @@ def evaluate_tp_depth(
     a reported outcome other than NO_REPORT.
     """
     from signalyze.analytics import GroupTpDepth, iter_tp_depth
-    from signalyze.ingest import build_label_map, resolve_group_label
+    from signalyze.ingest import resolve_group_label
 
     settings = get_settings()
     db_path = settings.resolve(settings.paths.db_path)
-    label_map = build_label_map(settings.resolve(settings.paths.groups_file))
+    label_map = _load_label_map(settings)
     label_width = 36
     with open_database(db_path) as db:
         rows = [r for r in iter_tp_depth(db=db) if r.n_signals >= min_signals]
@@ -694,9 +705,12 @@ def compare_metrics(
 ) -> None:
     """Print per-group reported-vs-actual analytics table."""
     from signalyze.analytics import iter_group_metrics
+    from signalyze.ingest import resolve_group_label
 
     settings = get_settings()
     db_path = settings.resolve(settings.paths.db_path)
+    label_map = _load_label_map(settings)
+    label_width = 36
     with open_database(db_path) as db:
         rows = sorted(
             iter_group_metrics(db=db, start_utc=start_utc, end_utc=end_utc),
@@ -704,7 +718,7 @@ def compare_metrics(
         )
 
     header = (
-        f"{'group_id':<20} {'n':>4} {'rep_w%':>7} {'act_w%':>7} {'gap':>6} "
+        f"{'group':<{label_width}} {'n':>4} {'rep_w%':>7} {'act_w%':>7} {'gap':>6} "
         f"{'avg_pips':>9} {'avg_rr':>7} {'amb':>4} {'no_data':>8}"
     )
     typer.echo(header)
@@ -715,8 +729,9 @@ def compare_metrics(
         gap = f"{(m.win_rate_gap or 0) * 100:+5.1f}" if m.win_rate_gap is not None else "  n/a"
         pips = f"{m.avg_realized_pips:8.1f}" if m.avg_realized_pips is not None else "     n/a"
         rr = f"{m.avg_realized_rr:6.2f}" if m.avg_realized_rr is not None else "   n/a"
+        label = resolve_group_label(m.group_id, label_map, max_len=label_width)
         typer.echo(
-            f"{m.group_id:<20} {m.n_signals:>4} {rep:>7} {act:>7} {gap:>6} "
+            f"{label:<{label_width}} {m.n_signals:>4} {rep:>7} {act:>7} {gap:>6} "
             f"{pips:>9} {rr:>7} {m.ambiguous_bars:>4} {m.insufficient_data:>8}"
         )
 
@@ -739,6 +754,7 @@ def report_html(
     settings = get_settings()
     db_path = settings.resolve(settings.paths.db_path)
     output_path = settings.resolve(output)
+    _load_label_map(settings)
     with open_database(db_path) as db:
         rendered = render_html_report(
             db=db,
