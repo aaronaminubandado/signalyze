@@ -1,15 +1,18 @@
 # Signalyze
 
-A modular pipeline that turns Telegram trading-signal channels into auditable,
-reproducible performance analytics — including a reported-vs-actual comparison
-layer that exposes systematic publisher bias.
+A **prototype** modular pipeline that turns Telegram XAUUSD trading-signal
+channels into batch analytics: parse signals and follow-ups, link them,
+derive *reported* outcomes from the chat, simulate *actual* first-touch
+outcomes on OHLCV bars, and compare the two.
 
-> **v1 scope:** XAUUSD, batch/historical analysis. Multi-instrument, live
-> ingestion, and tick-resolution simulation are tracked as follow-on work.
+> **Status:** exploratory / prototype. Much of the pipeline was
+> built quickly with AI assistance. Stages run and tests pass, but several
+> correctness gaps remain (see [Known limitations](#known-limitations)).
+> Treat numbers as directional, not audited research.
+
+> **v1 scope:** XAUUSD, batch/historical analysis only. Not financial advice.
 
 ## At a glance
-
-A single end-to-end run produces, per stage:
 
 | Stage             | Output                                                          |
 | ----------------- | --------------------------------------------------------------- |
@@ -24,18 +27,43 @@ A single end-to-end run produces, per stage:
 | compare           | per-signal discrepancies (reported vs actual)                   |
 | report            | leaderboard, TP-depth breakdown, Streamlit dashboard, static HTML |
 
-The point of running the whole pipeline is the **comparison layer**: most
-signal channels publish very high reported win rates (the chat threads are
-edited to mark each trade as a win after the fact), and Signalyze quantifies
-the gap between those self-reported outcomes and what a mechanical execution
-of the same signals would have produced on the same OHLCV bars.
+The comparison layer is the interesting idea: channels often show very high
+*self-reported* win rates, and Signalyze tries to measure the gap versus a
+mechanical execution of the same parsed signals on the same bars. That gap is
+only as good as parsing, linking, and market coverage — see limitations below.
 
 To keep the public repo neutral, no real channel labels or Telegram peer ids
 are committed. `config/groups.example.txt` ships with anonymous placeholders
 (`Channel A`, `Channel B`, …); copy it to `config/groups.txt` (gitignored) and
 fill in your own. The CLI, HTML report, and Streamlit dashboard read those
-labels via `groups_loader.resolve_group_label`, so every surface stays
-human-readable without leaking the manifest.
+labels via `groups_loader.resolve_group_label`.
+
+## Known limitations
+
+Honest caveats before you trust or demo the metrics:
+
+### Linking
+- Schema allows **more than one link per follow-up** (`UNIQUE(follow_up_id, signal_id)` only). Re-running the linker after signals change can attach the same follow-up to multiple parents and double-count outcomes.
+- LLM tiebreak currently sends **empty follow-up text**, so the model cannot read the message. An LLM “none of these” answer is ignored; the top heuristic candidate wins.
+- Temporal linking does **not** filter to open trades or matching direction the way the docs suggest; `tp_index` boosts score without checking claimed price against that TP level.
+
+### Parsing
+- Entry extraction can mistake a tight **TP price range** for an entry zone, or take the **first price** on a direction line (e.g. SL before ENTRY).
+- First `BUY`/`SELL` token wins (no negation handling). Take-profit list order is appearance order, not necessarily TP1→TPn.
+- Follow-up LLM fallback can turn non-events into structured events when rules return nothing.
+
+### Evaluation
+- Reported `claimed_pips` **sums** per-TP pip claims; many channels post **cumulative** figures, so totals are often inflated.
+- Actual sim: `win_policy` is stored on outcomes but **does not change** simulation logic (always first touched TP among levels).
+- Range entries fill mid-band on the first intersecting bar, but the SL/TP walk still starts at the **signal timestamp** (pre-fill bars can decide the trade).
+- Sparse or truncated bar caches tend to become `OPEN_AT_EXPIRY` rather than `INSUFFICIENT_DATA`. Market fetch treats a day as covered at **~50%** of expected 1m bars.
+- Signal `quality_flag` is largely ignored when computing outcomes. Follow-up BE/SL moves are not applied in the actual simulator.
+- Reported vs actual win-rate **gap** can mix different decided sets (coverage/ambiguity on one side only), so “publisher bias” headlines need care.
+
+### Docs / polish mismatches
+- Repository layout mentions expectancy; that metric is **not** implemented.
+- Some CLI flags (e.g. leaderboard `min_link_confidence`) do not re-filter already-computed outcomes.
+- Stages upsert on re-run; “idempotent” means safe to re-run, not “never rewrite prior rows.”
 
 ## Quick start
 
@@ -62,7 +90,7 @@ signalyze market fetch --instrument XAUUSD --interval 1min
 signalyze evaluate actual
 signalyze compare run
 signalyze report html
-streamlit run src/signalyze/report/streamlit_app.py
+streamlit run -m signalyze.report.dashboard
 ```
 
 Drop `--no-llm` on any stage to enable the LLM fallback (cached, budget-capped).
@@ -76,28 +104,33 @@ config/groups.txt (your private manifest) + data/raw/*.csv
   -> parse     (rules + LLM fallback          -> signals, follow_ups)
   -> link      (reply_to / temporal-numeric / recent-open / LLM tiebreak)
   -> evaluate  (linked follow-ups             -> reported_outcomes)
-  -> market    (Twelve Data, idempotent       -> market_bars)
+  -> market    (Twelve Data, gap-aware        -> market_bars)
   -> evaluate  (walk-forward, first-touch sim -> actual_outcomes)
   -> compare   (reported vs actual            -> discrepancies)
   -> report    (Streamlit + static HTML)
 ```
 
 See [`docs/architecture.md`](docs/architecture.md) for the per-stage I/O
-contract, and [`docs/adr/`](docs/adr/) for the five core design decisions.
+contract, and [`docs/adr/`](docs/adr/) for design decisions. Prefer this README’s
+limitations section over optimistic wording in older docs if they conflict.
 
-## Design principles
+## Design principles (intent)
+
+These describe the target shape of the codebase, not a guarantee that every
+edge case is handled:
 
 - **Domain-first.** Pydantic v2 models in `signalyze.domain` are pure data;
   storage and parsing depend on domain, never the reverse.
-- **Idempotent stages.** Every stage re-runs cleanly. Outputs carry
-  `parse_version` / `linker_version` / `computed_version` so a version bump is
-  distinguishable from a no-op replay.
+- **Re-runnable stages.** Stages can be re-run; outputs carry version fields
+  (`parse_version` / `linker_version` / `computed_version`). Upserts overwrite
+  prior rows for the same key.
 - **Deterministic-first, LLM-fallback.** Rules emit
   `(payload, confidence, reasons)`. The LLM fires only below
-  `parse.llm_escalation_threshold`, and every call is cached on
+  `parse.llm_escalation_threshold`, and calls are cached on
   `(model, prompt_version, content_hash)`.
-- **Confidence everywhere.** Classifications, parses, and links each carry a
-  confidence score. Headline metrics filter on it.
+- **Confidence fields.** Classifications, parses, and links carry confidence
+  scores for filtering and review export — not all headline CLI tables apply
+  those filters after outcomes are already written.
 - **Cost discipline.** Hard budget cap via `SIGNALYZE_LLM_MAX_USD_PER_RUN`
   (default $2); cache hits are free.
 
@@ -118,26 +151,27 @@ signalyze/
     market/          # OHLCV provider protocol + Twelve Data + CSV
     evaluate/        # reported & actual (walk-forward) outcomes
     compare/         # reported-vs-actual discrepancies
-    analytics/       # win rate, RR, time-to-hit, expectancy
+    analytics/       # win rate, RR, time-to-hit, TP-depth
     report/          # Streamlit dashboard + static HTML export
     cli.py           # Typer entry point
+  scripts/           # get_groups.py (regenerate private groups.txt)
   tests/
-    unit/            # ~50 unit tests; rules, storage, simulator
+    unit/
     golden/          # exact-match thresholds enforced in CI
     fixtures/        # hand-labelled JSONL golden sets
   docs/
     architecture.md
-    adr/             # 5 accepted ADRs
+    adr/
   data/              # gitignored: raw/, db/, cache/, reports/
 ```
 
 ## Quality gates (CI)
 
 - `ruff` (lint) + `mypy --strict` (typecheck) on `src/signalyze`.
-- `pytest` with the golden thresholds bumped to **≥0.95** after Phase 11
-  hardening for signal extraction, follow-up extraction, and SIGNAL-class
-  precision in classification.
-- Cost guard exercised by tests for the LLM cache and the budget cap.
+- `pytest` with golden thresholds at **≥0.95** for signal extraction,
+  follow-up extraction, and SIGNAL-class precision in classification
+  (on the fixed fixture set — not a guarantee on live channel text).
+- LLM cache / budget-cap behavior covered by unit tests.
 
 ## License
 
