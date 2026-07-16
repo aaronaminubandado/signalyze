@@ -22,8 +22,8 @@ class PathsConfig(BaseModel):
 
 class IngestConfig(BaseModel):
     session_name: str = "session"
-    date_from_utc: str = "2026-01-17T00:00:00Z"
-    date_to_utc: str = "2026-04-17T00:00:00Z"
+    date_from_utc: str = "2026-05-15T00:00:00Z"
+    date_to_utc: str = "2026-07-16T00:00:00Z"
 
 
 class InstrumentConfig(BaseModel):
